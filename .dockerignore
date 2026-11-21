@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!requirements.txt
+!requirements-web.txt
+!web_app.py
+!evaluate_glcm_models.py
+!glcm.py
+!glcm_classification_results.json
+!glcm_G16_d1_a0.csv
+!glcm_L16_d1_a0_1794925531103.csv
+!GLCM_Texture_Batch_L16_d1_a0.ijm
+!web/
+!web/**
+!dataset_xla/
+!dataset_xla/**
+!docker/
+!docker/**

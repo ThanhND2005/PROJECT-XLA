@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 4 ] || [ "$1" != "-port0" ] || [ "$2" != "-batch" ]; then
+  echo "Usage: glcm-fiji -port0 -batch MACRO INPUT_DIR|OUTPUT_CSV" >&2
+  exit 2
+fi
+shift 2
+
+exec timeout --kill-after=5s 75s xvfb-run -a java \
+  -Xmx512m -Duser.language=en -Duser.country=US -Dplugins.dir=/opt/glcm-imagej \
+  -cp /opt/glcm-imagej:/opt/glcm-imagej/ij.jar GlcmMacroRunner "$@"

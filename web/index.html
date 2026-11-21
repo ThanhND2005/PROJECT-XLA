@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Phân loại ảnh kết cấu và trích xuất đặc trưng bằng GLCM Python hoặc Fiji.">
+  <meta name="theme-color" content="#f7f8f4">
+  <title>Texture Lab · Phân tích kết cấu ảnh</title>
+  <link rel="stylesheet" href="/app.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/" aria-label="Texture Lab, trang chủ">
+        <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Texture<span class="brand-accent">Lab</span></span>
+      </a>
+      <a class="dataset-link" href="#dataset"><span class="icon layers" aria-hidden="true"></span> Bộ dữ liệu</a>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="hero-kicker"><span class="mini-grid" aria-hidden="true"></span> PHÒNG THÍ NGHIỆM GLCM</div>
+        <h1 id="hero-title">Phân tích<br><em>kết cấu ảnh.</em></h1>
+        <p>Nhận diện 5 loại kết cấu và khám phá đặc trưng ảnh bằng GLCM Python tự viết hoặc plugin Fiji.</p>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="tile tile-top"></div><div class="tile tile-main"></div><div class="tile tile-bottom"></div>
+        <div class="reticle"></div>
+      </div>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="Chức năng">
+      <button class="tab" id="predict-tab" role="tab" aria-selected="true" aria-controls="workspace" data-tab="predict"><span class="icon scan" aria-hidden="true"></span>Dự đoán ảnh</button>
+      <button class="tab" id="extract-tab" role="tab" aria-selected="false" aria-controls="workspace" tabindex="-1" data-tab="extract"><span class="icon chart" aria-hidden="true"></span>Trích xuất đặc trưng</button>
+    </nav>
+
+    <section class="workspace" id="workspace" role="tabpanel" aria-labelledby="predict-tab">
+      <section class="panel input-panel" aria-labelledby="input-title">
+        <h2 id="input-title">Thiết lập phân tích</h2>
+        <form id="analysis-form">
+          <fieldset>
+            <legend>Phương pháp GLCM</legend>
+            <div class="methods">
+              <label class="method">
+                <input type="radio" name="method" value="python" checked>
+                <span class="method-icon python-icon" aria-hidden="true">[ ]</span>
+                <span class="method-copy"><strong>Python</strong><small>GLCM tự viết</small></span>
+                <span class="radio" aria-hidden="true"></span>
+              </label>
+              <label class="method">
+                <input type="radio" name="method" value="fiji">
+                <span class="method-icon fiji-icon" aria-hidden="true">◇</span>
+                <span class="method-copy"><strong>Fiji</strong><small>GLCM Texture 0.4</small></span>
+                <span class="radio" aria-hidden="true"></span>
+              </label>
+            </div>
+            <p id="method-note" class="method-note" hidden>Fiji cần được cấu hình trên máy chạy web.</p>
+          </fieldset>
+
+          <div class="input-label" id="upload-label">Ảnh đầu vào</div>
+          <input class="sr-only" type="file" id="file" accept=".png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff" tabindex="-1" aria-labelledby="upload-label">
+          <button class="dropzone" id="dropzone" type="button" aria-label="Chọn hoặc thay ảnh đầu vào">
+            <span class="upload-icon" aria-hidden="true"><span class="icon upload"></span></span>
+            <span class="upload-copy"><strong>Kéo thả hoặc <span>chọn ảnh</span></strong><small>PNG, JPG, WebP, BMP, TIFF · tối đa 12 MB</small></span>
+            <img id="preview" alt="" hidden>
+          </button>
+          <button class="submit" id="run" type="submit" disabled><span class="icon scan" aria-hidden="true"></span><span id="run-text">Chạy dự đoán</span></button>
+        </form>
+      </section>
+      <section class="panel output-panel" aria-labelledby="output-title">
+        <div class="output-header"><h2 id="output-title">Kết quả dự đoán</h2><span id="output-meta">LDA · 5 lớp</span></div>
+        <div id="result" class="result" aria-live="polite">
+          <div class="placeholder">
+            <div class="empty-icon" aria-hidden="true"><span class="icon chart"></span></div>
+            <strong>Chưa có kết quả</strong>
+            <p>Chọn ảnh và chạy dự đoán để xem lớp kết cấu.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="dataset" id="dataset" aria-labelledby="dataset-title">
+      <div class="dataset-heading"><h2 id="dataset-title">Thử với ảnh mẫu</h2><p>5 lớp kết cấu · 800 ảnh trong bộ dữ liệu</p></div>
+      <div class="samples" id="samples"></div>
+    </section>
+  </main>
+  <footer class="shell footer"><span>TextureLab</span><span>GLCM · 16 mức xám · d = 1 · θ = 0°</span></footer>
+</body>
+</html>
