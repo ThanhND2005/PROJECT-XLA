@@ -25,7 +25,7 @@ python web_app.py
 
 Mở http://127.0.0.1:8000. Có thể tải ảnh lên, kéo thả hoặc chọn một trong năm ảnh mẫu.
 
-- **Dự đoán ảnh** trả về lớp Chăn, Sàn, Cỏ, Gạo hoặc Cát và điểm phân biệt LDA của từng lớp. Máy chủ huấn luyện hai model riêng khi khởi động từ hai CSV Python và Fiji. Mỗi model dùng 600 ảnh thuộc nhóm a/b/c. Các ảnh mẫu trên web thuộc nhóm d.
+- **Dự đoán ảnh** hiển thị lớp Chăn, Sàn, Cỏ, Gạo hoặc Cát và xác suất ước tính của từng lớp dưới dạng phần trăm. Máy chủ huấn luyện hai model riêng khi khởi động từ hai CSV Python và Fiji. Mỗi model dùng 600 ảnh thuộc nhóm a/b/c. Các ảnh mẫu trên web thuộc nhóm d.
 - **Trích xuất đặc trưng** hiển thị Contrast, Correlation, ASM, Energy, Homogeneity và Entropy. Với Python, có thể mở bản đồ nhiệt và tải CSV ma trận xác suất GLCM 16 × 16. Macro Fiji xuất sáu giá trị từ plugin.
 - Cả hai phương pháp chạy ở 16 mức xám, khoảng cách 1, góc 0°. Python gọi trực tiếp thuật toán tự viết trong `glcm.py`. Model dùng năm đặc trưng, với Energy được suy ra từ ASM.
 

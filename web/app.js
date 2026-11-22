@@ -25,6 +25,7 @@ const meta = document.querySelector("#output-meta");
 const methodNote = document.querySelector("#method-note");
 const samples = document.querySelector("#samples");
 const decimal = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 6 });
+const percent = new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 2 });
 
 let currentTab = "predict";
 let selectedFile = null;
@@ -187,9 +188,9 @@ form.addEventListener("change", (event) => {
   if (event.target.name === "method") resetOutput();
 });
 
-function appendMeasurement(list, name, value) {
+function appendMeasurement(list, name, value, formatter = decimal) {
   const row = element("div");
-  row.append(element("dt", "", name), element("dd", "", decimal.format(value)));
+  row.append(element("dt", "", name), element("dd", "", formatter.format(value)));
   list.append(row);
 }
 
@@ -203,8 +204,10 @@ function showPrediction(result) {
   label.append(element("small", "", "Lớp dự đoán"), element("strong", "", first.label));
   winner.append(image, label);
   const scores = element("dl", "scores");
-  for (const { label: name, score } of result.ranking) appendMeasurement(scores, name, score);
-  output.replaceChildren(winner, scores, element("p", "", "Điểm phân biệt LDA theo lớp"));
+  for (const { label: name, probability } of result.ranking) {
+    appendMeasurement(scores, name, probability, percent);
+  }
+  output.replaceChildren(winner, scores, element("p", "", "Xác suất ước tính theo lớp"));
 }
 
 function matrixDetails(matrix) {

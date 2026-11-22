@@ -176,8 +176,13 @@ def run_analysis(data, method, predict, models, fiji):
         mean, scale, weights, intercept = models[method]
         vector = np.array([features[name] for name in FEATURES])
         scores = weights @ ((vector - mean) / scale) + intercept
-        ranking = sorted(zip(CLASSES, scores), key=lambda item: item[1], reverse=True)
-        result["ranking"] = [{"id": key, "label": CLASSES[key], "score": float(score)} for key, score in ranking]
+        likelihoods = np.exp(scores - scores.max())
+        probabilities = likelihoods / likelihoods.sum()
+        ranking = sorted(zip(CLASSES, scores, probabilities), key=lambda item: item[1], reverse=True)
+        result["ranking"] = [
+            {"id": key, "label": CLASSES[key], "score": float(score), "probability": float(probability)}
+            for key, score, probability in ranking
+        ]
     return result
 
 
