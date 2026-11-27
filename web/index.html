@@ -51,6 +51,26 @@
             <p id="method-note" class="method-note" hidden>Fiji cần được cấu hình trên máy chạy web.</p>
           </fieldset>
 
+          <fieldset id="extraction-settings" hidden disabled>
+            <legend>Tham số GLCM</legend>
+            <div class="extraction-fields">
+              <label>Mức xám G
+                <input type="number" name="levels" min="2" max="256" step="1" value="16" required>
+              </label>
+              <label>Khoảng cách d (px)
+                <input type="number" name="distance" min="1" step="1" value="1" required>
+              </label>
+              <label>Góc
+                <select name="angle">
+                  <option value="0">0°</option>
+                  <option value="45" data-python-only>45°</option>
+                  <option value="90">90°</option>
+                  <option value="135" data-python-only>135°</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
           <div class="input-label" id="upload-label">Ảnh đầu vào</div>
           <input class="sr-only" type="file" id="file" accept=".png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff" tabindex="-1" aria-labelledby="upload-label">
           <button class="dropzone" id="dropzone" type="button" aria-label="Chọn hoặc thay ảnh đầu vào">
@@ -78,6 +98,6 @@
       <div class="samples" id="samples"></div>
     </section>
   </main>
-  <footer class="shell footer"><span>TextureLab</span><span>GLCM · 16 mức xám · d = 1 · θ = 0°</span></footer>
+  <footer class="shell footer"><span>TextureLab</span><span>GLCM</span></footer>
 </body>
 </html>

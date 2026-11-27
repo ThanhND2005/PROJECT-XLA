@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from tempfile import gettempdir
 from threading import Lock
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import numpy as np
@@ -35,6 +35,8 @@ MAX_PIXELS = 4_000_000
 FORMATS = ("PNG", "JPEG", "WEBP", "BMP", "TIFF")
 MACRO = ROOT / "GLCM_Texture_Batch_L16_d1_a0.ijm"
 FIJI_LOCK = Lock()
+DEFAULT_LEVELS, DEFAULT_DISTANCE, DEFAULT_ANGLE = 16, 1, 0
+ANGLES = {"python": (0, 45, 90, 135), "fiji": (0, 90)}
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -77,8 +79,8 @@ def decode_image(data):
         with Image.open(io.BytesIO(data)) as image:
             if image.format not in FORMATS:
                 raise AnalysisError("Hãy chọn ảnh PNG, JPG, WebP, BMP hoặc TIFF.")
-            if image.width < 2 or image.width * image.height > MAX_PIXELS:
-                raise AnalysisError("Ảnh cần rộng từ 2 pixel và tối đa 4 triệu pixel.")
+            if image.width * image.height > MAX_PIXELS:
+                raise AnalysisError("Ảnh cần có tối đa 4 triệu pixel.")
             if getattr(image, "n_frames", 1) != 1:
                 raise AnalysisError("Hãy chọn ảnh tĩnh chỉ có một khung hình.")
             return image.convert("L")
@@ -86,10 +88,26 @@ def decode_image(data):
         raise AnalysisError("Không đọc được ảnh. Hãy kiểm tra định dạng và thử lại.") from error
 
 
-def extract_python(gray):
+def extraction_settings(query):
+    params = parse_qs(query, keep_blank_values=True)
+    settings = {}
+    for name in ("levels", "distance", "angle"):
+        if name not in params:
+            continue
+        values = params[name]
+        if len(values) != 1 or not values[0].isascii() or not values[0].isdecimal():
+            raise AnalysisError("G, d và góc phải là các số nguyên không âm.", 400)
+        try:
+            settings[name] = int(values[0])
+        except ValueError as error:
+            raise AnalysisError("Giá trị tham số GLCM quá lớn.", 400) from error
+    return settings
+
+
+def extract_python(gray, *, levels=DEFAULT_LEVELS, distance=DEFAULT_DISTANCE, angle=DEFAULT_ANGLE):
     pixels = list(gray.tobytes())
     rows = [pixels[i:i + gray.width] for i in range(0, len(pixels), gray.width)]
-    result = analyze(quantize(rows, 16), levels=16, distances=(1,), angles=(0,))["results"][0]
+    result = analyze(quantize(rows, levels), levels=levels, distances=(distance,), angles=(angle,))["results"][0]
     return result["features"], result["probabilities"]
 
 
@@ -130,12 +148,12 @@ def fiji_files(gray):
         workspace.rmdir()
 
 
-def extract_fiji(gray, executable):
+def extract_fiji(gray, executable, *, levels=DEFAULT_LEVELS, distance=DEFAULT_DISTANCE, angle=DEFAULT_ANGLE):
     if executable is None:
         raise AnalysisError("Chưa tìm thấy Fiji. Hãy cài Fiji cùng GLCM Texture 0.4 và đặt GLCM_FIJI_EXE.", 503)
     try:
         with FIJI_LOCK, fiji_files(gray) as (source, output):
-            argument = f"{source}|{output}"
+            argument = f"{source}|{output}|{levels}|{distance}|{angle}"
             if os.environ.get("GLCM_FIJI_MODE") == "batch":
                 command = [str(executable), "-port0", "-batch", str(MACRO), argument]
             else:
@@ -149,6 +167,8 @@ def extract_fiji(gray, executable):
             if len(rows) != 1:
                 raise ValueError("Fiji không trả đúng một dòng đặc trưng.")
             row = rows[0]
+            if (int(row["levels"]), int(row["distance"]), int(row["angle"])) != (levels, distance, angle):
+                raise ValueError("Fiji trả về cấu hình GLCM khác với yêu cầu.")
             if row["status"] == "undefined_correlation":
                 raise AnalysisError("Plugin Fiji không xác định được Correlation cho ảnh này.")
             features = {name: float(row[name]) for name in FEATURE_NAMES}
@@ -162,9 +182,26 @@ def extract_fiji(gray, executable):
         raise AnalysisError("Fiji không trả được đặc trưng. Hãy kiểm tra plugin GLCM Texture 0.4 và log máy chủ.", 502) from error
 
 
-def run_analysis(data, method, predict, models, fiji):
+def run_analysis(data, method, predict, models, fiji, *,
+                 levels=DEFAULT_LEVELS, distance=DEFAULT_DISTANCE, angle=DEFAULT_ANGLE):
+    if predict:
+        levels, distance, angle = DEFAULT_LEVELS, DEFAULT_DISTANCE, DEFAULT_ANGLE
+    if not 2 <= levels <= 256:
+        raise AnalysisError("Mức xám G phải nằm trong khoảng từ 2 đến 256.", 400)
+    if distance < 1:
+        raise AnalysisError("Khoảng cách d phải từ 1 pixel trở lên.", 400)
+    if angle not in ANGLES[method]:
+        choices = ", ".join(f"{value}°" for value in ANGLES[method])
+        raise AnalysisError(f"Góc hợp lệ cho phương pháp này: {choices}.", 400)
     gray = decode_image(data)
-    features, matrix = extract_python(gray) if method == "python" else extract_fiji(gray, fiji)
+    limit = {0: gray.width, 90: gray.height}.get(angle, min(gray.size))
+    if distance >= limit:
+        raise AnalysisError(f"Khoảng cách d phải nhỏ hơn {limit} pixel với ảnh này ở góc {angle}°.")
+    settings = dict(levels=levels, distance=distance, angle=angle)
+    if method == "python":
+        features, matrix = extract_python(gray, **settings)
+    else:
+        features, matrix = extract_fiji(gray, fiji, **settings)
     result = {
         "method": method,
         "width": gray.width,
@@ -183,6 +220,8 @@ def run_analysis(data, method, predict, models, fiji):
             {"id": key, "label": CLASSES[key], "score": float(score), "probability": float(probability)}
             for key, score, probability in ranking
         ]
+    else:
+        result.update(settings)
     return result
 
 
@@ -213,7 +252,8 @@ class WebHandler(BaseHTTPRequestHandler):
         self.json(404, {"error": "Không tìm thấy tài nguyên."})
 
     def do_POST(self):
-        route = urlsplit(self.path).path.strip("/").split("/")
+        url = urlsplit(self.path)
+        route = url.path.strip("/").split("/")
         if len(route) != 3 or route[0] != "api" or route[1] not in ("predict", "extract") or route[2] not in ("python", "fiji"):
             return self.json(404, {"error": "Không tìm thấy yêu cầu phân tích này."})
         try:
@@ -223,8 +263,10 @@ class WebHandler(BaseHTTPRequestHandler):
         if size <= 0 or size > MAX_BYTES:
             return self.json(413, {"error": "Hãy chọn ảnh có dung lượng từ 1 byte đến 12 MB."})
         try:
-            result = run_analysis(self.rfile.read(size), route[2], route[1] == "predict",
-                                  self.server.models, self.server.fiji)
+            data = self.rfile.read(size)
+            predict = route[1] == "predict"
+            settings = {} if predict else extraction_settings(url.query)
+            result = run_analysis(data, route[2], predict, self.server.models, self.server.fiji, **settings)
         except AnalysisError as error:
             return self.json(error.status, {"error": str(error)})
         self.json(200, result)

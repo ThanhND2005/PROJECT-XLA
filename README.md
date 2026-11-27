@@ -26,8 +26,10 @@ python web_app.py
 Mở http://127.0.0.1:8000. Có thể tải ảnh lên, kéo thả hoặc chọn một trong năm ảnh mẫu.
 
 - **Dự đoán ảnh** hiển thị lớp Chăn, Sàn, Cỏ, Gạo hoặc Cát và xác suất ước tính của từng lớp dưới dạng phần trăm. Máy chủ huấn luyện hai model riêng khi khởi động từ hai CSV Python và Fiji. Mỗi model dùng 600 ảnh thuộc nhóm a/b/c. Các ảnh mẫu trên web thuộc nhóm d.
-- **Trích xuất đặc trưng** hiển thị Contrast, Correlation, ASM, Energy, Homogeneity và Entropy. Với Python, có thể mở bản đồ nhiệt và tải CSV ma trận xác suất GLCM 16 × 16. Macro Fiji xuất sáu giá trị từ plugin.
-- Cả hai phương pháp chạy ở 16 mức xám, khoảng cách 1, góc 0°. Python gọi trực tiếp thuật toán tự viết trong `glcm.py`. Model dùng năm đặc trưng, với Energy được suy ra từ ASM.
+- **Trích xuất đặc trưng** cho phép chọn G từ 2 đến 256, d từ 1 pixel trở lên và góc. Python hỗ trợ 0°, 45°, 90°, 135° và cho phép xem bản đồ nhiệt, tải CSV ma trận xác suất GLCM kích thước G × G. Plugin Fiji 0.4 hỗ trợ hai hướng đối xứng 0° và 90° trong web. Cả hai phương pháp trả về Contrast, Correlation, ASM, Energy, Homogeneity và Entropy.
+- Trích xuất mặc định dùng G = 16, d = 1, góc 0°. Hai model dự đoán dùng bộ tham số này để khớp dữ liệu huấn luyện.
+
+API trích xuất nhận dữ liệu ảnh làm thân yêu cầu POST. Ví dụ `/api/extract/python?levels=32&distance=2&angle=45`. Mỗi tham số có thể được bỏ qua để dùng giá trị mặc định.
 
 ### Kết nối Fiji
 

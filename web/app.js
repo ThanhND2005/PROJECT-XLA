@@ -12,6 +12,9 @@ const featureLabels = {
 const tabs = [...document.querySelectorAll("[role=tab]")];
 const workspace = document.querySelector("#workspace");
 const form = document.querySelector("#analysis-form");
+const extractionFields = document.querySelector("#extraction-settings");
+const angleField = form.elements.angle;
+const diagonalOptions = angleField.querySelectorAll("[data-python-only]");
 const fileInput = document.querySelector("#file");
 const dropzone = document.querySelector("#dropzone");
 const preview = document.querySelector("#preview");
@@ -59,6 +62,26 @@ function method() {
   return form.elements.method.value;
 }
 
+function extractionSettings() {
+  const { levels, distance, angle } = form.elements;
+  return { levels: levels.valueAsNumber, distance: distance.valueAsNumber, angle: Number(angle.value) };
+}
+
+function formatSettings({ levels, distance, angle }) {
+  return `G = ${levels} · d = ${distance} · ${angle}°`;
+}
+
+function syncSettings() {
+  extractionFields.hidden = extractionFields.disabled = currentTab === "predict";
+  const usingFiji = method() === "fiji";
+  if (usingFiji && angleField.selectedOptions[0]?.hasAttribute("data-python-only")) {
+    angleField.value = "0";
+  }
+  for (const option of diagonalOptions) {
+    option.hidden = option.disabled = usingFiji;
+  }
+}
+
 function refreshForm() {
   submit.disabled = !selectedFile || Boolean(activeRequest);
   submitText.textContent = activeRequest ? "Đang phân tích…" :
@@ -72,7 +95,8 @@ function resetOutput() {
   activeRequest = null;
   const predicting = currentTab === "predict";
   title.textContent = predicting ? "Kết quả dự đoán" : "Đặc trưng GLCM";
-  meta.textContent = predicting ? "LDA · 5 lớp" : "G = 16 · d = 1 · 0°";
+  meta.textContent = predicting ? "LDA · 5 lớp" :
+    form.checkValidity() ? formatSettings(extractionSettings()) : "Tham số GLCM";
   placeholder("Chưa có kết quả", predicting ?
     "Chọn ảnh và chạy dự đoán để xem lớp kết cấu." :
     "Chọn ảnh và chạy trích xuất để xem các giá trị.");
@@ -87,6 +111,7 @@ function selectTab(tab) {
     button.tabIndex = button === tab ? 0 : -1;
   }
   workspace.setAttribute("aria-labelledby", tab.id);
+  syncSettings();
   resetOutput();
 }
 
@@ -185,8 +210,12 @@ dropzone.addEventListener("drop", (event) => {
   selectFile(event.dataTransfer.files[0]);
 });
 form.addEventListener("change", (event) => {
-  if (event.target.name === "method") resetOutput();
+  if (event.target.name === "method") {
+    syncSettings();
+    resetOutput();
+  }
 });
+extractionFields.addEventListener("input", resetOutput);
 
 function appendMeasurement(list, name, value, formatter = decimal) {
   const row = element("div");
@@ -210,9 +239,9 @@ function showPrediction(result) {
   output.replaceChildren(winner, scores, element("p", "", "Xác suất ước tính theo lớp"));
 }
 
-function matrixDetails(matrix) {
+function matrixDetails({ matrix, levels, distance, angle }) {
   const details = element("details", "matrix-info");
-  const summary = element("summary", "", "Ma trận xác suất GLCM 16 × 16");
+  const summary = element("summary", "", `Ma trận xác suất GLCM ${levels} × ${levels}`);
   const body = element("div", "matrix-body");
   const canvas = element("canvas");
   canvas.width = matrix.length;
@@ -220,7 +249,7 @@ function matrixDetails(matrix) {
   canvas.setAttribute("role", "img");
   canvas.setAttribute("aria-label", "Bản đồ nhiệt của ma trận xác suất GLCM");
   const context = canvas.getContext("2d");
-  const peak = Math.max(...matrix.flat());
+  const peak = matrix.reduce((max, row) => Math.max(max, ...row), 0);
   matrix.forEach((row, i) => row.forEach((value, j) => {
     const intensity = value / peak;
     context.fillStyle = `rgb(${Math.round(26 + 182 * intensity)} ${Math.round(47 + 192 * intensity)} ${Math.round(35 + 96 * intensity)})`;
@@ -229,7 +258,7 @@ function matrixDetails(matrix) {
   const caption = element("p", "", "Hàng i, cột j · Màu sáng biểu thị xác suất cao hơn.");
   const download = element("a", "matrix-download", "Tải ma trận CSV");
   download.href = "data:text/csv;charset=utf-8," + encodeURIComponent(matrix.map((row) => row.join(",")).join("\n"));
-  download.download = "ma-tran-glcm.csv";
+  download.download = `ma-tran-glcm-G${levels}-d${distance}-a${angle}.csv`;
   caption.append(document.createElement("br"), download);
   body.append(canvas, caption);
   details.append(summary, body);
@@ -242,7 +271,7 @@ function showFeatures(result) {
     appendMeasurement(list, label, result.features[key]);
   }
   output.replaceChildren(element("p", "", `Ảnh xám · ${result.width} × ${result.height} px`), list);
-  if (result.matrix) output.append(matrixDetails(result.matrix));
+  if (result.matrix) output.append(matrixDetails(result));
 }
 
 form.addEventListener("submit", async (event) => {
@@ -251,11 +280,12 @@ form.addEventListener("submit", async (event) => {
   const request = new AbortController();
   const engine = method();
   const mode = currentTab;
+  const query = mode === "extract" ? "?" + new URLSearchParams(extractionSettings()) : "";
   activeRequest = request;
   refreshForm();
   placeholder("Đang phân tích ảnh", engine === "fiji" ? "Đang chạy plugin GLCM Texture trong Fiji." : "Đang tính GLCM bằng Python.");
   try {
-    const response = await fetch(`/api/${mode}/${engine}`, {
+    const response = await fetch(`/api/${mode}/${engine}${query}`, {
       method: "POST",
       body: selectedFile,
       signal: request.signal,
@@ -264,7 +294,7 @@ form.addEventListener("submit", async (event) => {
     if (activeRequest !== request) return;
     if (!response.ok) throw new Error(result.error);
     const name = engine === "python" ? "Python" : "Fiji";
-    meta.textContent = mode === "predict" ? name + " · LDA" : name + " · 6 giá trị";
+    meta.textContent = mode === "predict" ? name + " · LDA" : name + " · " + formatSettings(result);
     if (mode === "predict") showPrediction(result);
     else showFeatures(result);
   } catch (error) {

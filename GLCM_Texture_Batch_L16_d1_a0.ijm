@@ -1,6 +1,6 @@
 // GLCM Texture 0.4 wrapper; input: original 8-bit PNG images.
 // Default configuration: 16 gray levels, distance 1, angle 0 degrees.
-// Optional argument: input_directory|output_csv
+// Optional argument: input_directory|output_csv[|levels|distance|angle]
 requires("1.54p");
 levels = 16; distance = 1; angle = 0;
 processed = 0; skipped = 0;
@@ -11,8 +11,19 @@ if (arg == "") {
     outCsv = outDir + "glcm_L16_d1_a0_" + d2s(getTime(), 0) + ".csv";
 } else {
     parts = split(arg, "|");
-    if (parts.length != 2) exit("Expected input_directory|output_csv");
+    if (parts.length != 2 && parts.length != 5)
+        exit("Expected input_directory|output_csv[|levels|distance|angle]");
     root = parts[0]; outCsv = parts[1];
+    if (parts.length == 5) {
+        levels = parseFloat(parts[2]);
+        distance = parseFloat(parts[3]);
+        angle = parseFloat(parts[4]);
+        if (isNaN(levels) || levels != floor(levels) || levels < 2 || levels > 256)
+            exit("Gray levels must be an integer from 2 to 256");
+        if (isNaN(distance) || distance != floor(distance) || distance < 1)
+            exit("Distance must be a positive integer");
+        if (angle != 0 && angle != 90) exit("Supported angles: 0 and 90 degrees");
+    }
 }
 if (!endsWith(root, File.separator)) root += File.separator;
 if (!File.isDirectory(root)) exit("Input directory does not exist");
@@ -49,9 +60,14 @@ function extractOne(path, label, csv, levels, distance, angle) {
         setOption("Changes", false); close();
         return;
     }
+    if ((angle == 0 && distance >= w) || (angle == 90 && distance >= h)) {
+        print("Skipped image too small for this distance: " + label);
+        skipped++;
+        setOption("Changes", false); close();
+        return;
+    }
     run("Select None");
-    divisor = 256 / levels;
-    run("Macro...", "code=v=floor(v/" + divisor + ")");
+    run("Macro...", "code=v=floor(v*" + levels + "/256)");
     options = "enter=" + distance + " select=[" + angle + " degrees]";
     options += " angular contrast correlation inverse entropy";
     run("GLCM Texture", options);

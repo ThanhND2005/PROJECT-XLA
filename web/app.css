@@ -58,6 +58,10 @@ legend, .input-label { font-size: .9rem; font-weight: 680; margin: 0 0 7px; padd
 .radio { width: 14px; height: 14px; margin-left: auto; flex-shrink: 0; border: 1px solid #9ca999; border-radius: 50%; }
 .method input:checked ~ .radio { border: 4px solid var(--green); }
 .method-note { margin-top: 8px; font-size: .85rem; color: #775116; }
+.extraction-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.extraction-fields label { display: grid; align-content: space-between; gap: 5px; font-size: .85rem; }
+.extraction-fields input, .extraction-fields select { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: inherit; font: inherit; }
+.extraction-fields :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .dropzone { display: flex; width: 100%; min-height: 101px; align-items: center; justify-content: center; gap: 12px; text-align: left; padding: 12px; border: 1px dashed #aebbaa; background: #fafbf8; border-radius: 11px; }
 .dropzone:hover, .dropzone.dragging { background: #f0f7e9; border-color: var(--green); }
 .upload-icon, .empty-icon { display: grid; place-items: center; flex: 0 0 auto; width: 39px; height: 39px; border: 1px solid var(--line); border-radius: 10px; color: var(--green); background: var(--white); }
